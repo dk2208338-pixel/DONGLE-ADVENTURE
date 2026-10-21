@@ -59,7 +59,7 @@ button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
 #title .logo h1 span{display:block;font-size:30px;color:var(--gold);text-shadow:0 3px 0 var(--gold2),0 6px 0 rgba(0,0,0,.25);margin-top:4px;letter-spacing:4px}
 #title .hero{position:absolute;left:50%;top:50%;transform:translate(-50%,-44%);width:min(72vw,330px);z-index:1;animation:bob 2.2s ease-in-out infinite;filter:drop-shadow(0 14px 10px rgba(0,0,0,.35))}
 #title .start{z-index:2;animation:pulse 1.6s ease-in-out infinite}
-#title .best{z-index:2;margin-top:14px;color:#fff;font-size:16px;text-shadow:0 2px 4px rgba(0,0,0,.6);font-family:'Gowun Dodum'}
+#title .best{z-index:2;margin-top:10px;color:#fff;font-size:16px;text-shadow:0 2px 4px rgba(0,0,0,.6);font-family:'Gowun Dodum'}
 
 /* ===== TOWN ===== */
 #town .bg{background-image:url(img/bg_town.jpg)}
@@ -254,6 +254,20 @@ button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
 #toast{position:absolute;left:50%;top:calc(70px + var(--sat));transform:translateX(-50%);z-index:60;background:var(--plum);color:#fff;padding:8px 16px;border-radius:30px;font-size:15px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.4)}
 #toast.on{opacity:1}
 
+.lbbtn{z-index:2;margin-top:12px}
+.lb{list-style:none;margin:6px 0 0}
+.lb li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px dashed #E3D5BC;font-size:16px}
+.lb li .rk{width:30px;text-align:center;font-size:18px;flex:none}
+.lb li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb li .fl{font-size:18px;color:var(--pink2);white-space:nowrap}
+.lb li .sub{font-family:'Gowun Dodum';font-size:12px;color:var(--plum2);white-space:nowrap}
+.lb li.me{background:#fff3d0;border-radius:12px}
+.lb li:nth-child(1) .rk{font-size:22px}
+.lbwrap{max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.lbmsg{text-align:center;font-family:'Gowun Dodum';font-size:14px;color:var(--plum2);padding:18px 0}
+.namein{display:flex;gap:8px;margin:10px 0 4px}
+.namein input{flex:1;min-width:0;font:inherit;font-size:18px;padding:10px 14px;border-radius:14px;border:3px solid #E3D5BC;background:#fff;color:var(--plum);outline:none;user-select:text;-webkit-user-select:text}
+.namein input:focus{border-color:var(--mint)}
 #mute{position:absolute;top:calc(10px + var(--sat));right:10px;z-index:70;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.4);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center}
 .hidden{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
@@ -269,6 +283,7 @@ button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
     <div class="logo"><h1>동글이<span>ADVENTURE</span></h1></div>
     <img class="hero" src="img/dongle_idle.png" alt="동글이">
     <button class="btn pink big start" data-act="toTown">모험 시작</button>
+    <button class="btn ghost lbbtn" data-act="leaderboard">🏆 리더보드</button>
     <div class="best" id="titleBest"></div>
   </section>
 
@@ -323,6 +338,36 @@ button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
   <button id="mute" title="소리">🔊</button>
 </div>
 
+<script type="module">
+/* ---------- 온라인 리더보드 (Firebase Firestore) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDg2z_qOEtIjYPTKEDMcQxmheSwXOYFevI",
+  authDomain: "dongle-69f31.firebaseapp.com",
+  projectId: "dongle-69f31",
+  storageBucket: "dongle-69f31.firebasestorage.app",
+  messagingSenderId: "747135604726",
+  appId: "1:747135604726:web:2adfcbf9effe0709fcd9d7"
+};
+window.LB = { ready:false, err:null };
+try {
+  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js");
+  const fs = await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js");
+  const app = initializeApp(firebaseConfig);
+  const db = fs.getFirestore(app);
+  window.LB = {
+    ready: true, err: null,
+    async submit(name, floor, lvl, kills) {
+      const ref = fs.doc(db, 'scores', name);
+      await fs.setDoc(ref, { name, floor, lvl, kills, ts: fs.serverTimestamp() });
+    },
+    async top(n = 20) {
+      const q = fs.query(fs.collection(db, 'scores'), fs.orderBy('floor', 'desc'), fs.orderBy('ts', 'asc'), fs.limit(n));
+      const snap = await fs.getDocs(q);
+      return snap.docs.map(d => d.data());
+    }
+  };
+} catch (e) { window.LB.err = e; console.warn('leaderboard offline', e); }
+</script>
 <script>
 /* ============================================================
    동글이 Adventure — single-file mobile roguelite
@@ -409,7 +454,7 @@ const UPG=[
 ];
 
 /* ---------- persistent meta ---------- */
-let META = {coins:0, up:{hp:0,atk:0,luck:0,pot:0,coin:0}, best:0, runs:0, kills:0};
+let META = {coins:0, up:{hp:0,atk:0,luck:0,pot:0,coin:0}, best:0, runs:0, kills:0, name:''};
 try{ const s=localStorage.getItem('dongle_meta'); if(s) META=Object.assign(META,JSON.parse(s)); }catch(e){}
 const save=()=>{ try{localStorage.setItem('dongle_meta',JSON.stringify(META));}catch(e){} };
 const upCost = u => Math.round(u.base*Math.pow(u.mul,META.up[u.id]));
@@ -636,8 +681,42 @@ function playerDead(){
   setTimeout(()=>{
     modal(`<div class="result"><h2>모험 끝…</h2><div class="big">😵</div><p class="sub">${R.floor}층에서 ${B.e.n}에게 쓰러졌어요</p>
     <table><tr><td>도달 층</td><td>${R.floor}층 ${R.floor>=META.best?'🏆 최고 기록!':''}</td></tr><tr><td>레벨</td><td>Lv.${R.lvl}</td></tr><tr><td>처치한 몬스터</td><td>${R.kills}</td></tr><tr><td>획득 코인 (마을로 가져가요)</td><td><img src="img/coin.png" style="width:18px;vertical-align:-3px"> ${fmt(earned)}</td></tr></table>
+    <div id="lbsubmit"><p class="sub" style="margin:10px 0 0">리더보드에 이름을 남겨요</p><div class="namein"><input id="nameIn" maxlength="12" placeholder="이름 (12자까지)" value="${esc(META.name)}" autocomplete="off"><button class="btn gold" data-act="submitScore">등록</button></div></div>
     <div class="acts"><button class="btn pink big" data-act="toTown">마을로</button></div></div>`);
+    window._lastRun={floor:R.floor,lvl:R.lvl,kills:R.kills};
   },900);
+}
+const esc=t=>String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function cleanName(t){ return String(t||'').replace(/[^\p{L}\p{N} _.!?♥★☆♡-]/gu,'').trim().slice(0,12); }
+const BAD=['시발','씨발','병신','좆','새끼','fuck','shit','bitch'];
+async function submitScore(){
+  const inp=$('#nameIn'); if(!inp) return; const name=cleanName(inp.value);
+  if(!name){ toast('이름을 입력해 주세요'); return; }
+  if(BAD.some(b=>name.toLowerCase().includes(b))){ toast('다른 이름을 써 주세요'); return; }
+  if(!window.LB||!LB.ready){ toast('지금은 리더보드에 연결할 수 없어요'); return; }
+  const r=window._lastRun; if(!r) return;
+  META.name=name; save();
+  const btn=$('[data-act=submitScore]'); btn.disabled=true; btn.textContent='등록 중…';
+  try{
+    await LB.submit(name,r.floor,r.lvl,r.kills); AU.coin();
+    let rank=null; try{ const t=await LB.top(100); const i=t.findIndex(x=>x.name===name); if(i>=0) rank=i+1; }catch(e){}
+    $('#lbsubmit').innerHTML=`<p class="sub" style="margin:10px 0 0">🏆 등록 완료!${rank?` 현재 <b>${rank}위</b>`:''}</p>`;
+  }catch(e){
+    console.warn(e); btn.disabled=false; btn.textContent='등록';
+    const msg=(e&&e.code==='permission-denied')?'이미 더 높은 기록이 있어요':'등록에 실패했어요. 잠시 후 다시 시도';
+    toast(msg,2200);
+  }
+}
+async function leaderboard(){
+  modal(`<h2>🏆 리더보드</h2><div class="lbwrap"><div class="lbmsg">불러오는 중…</div></div><div class="acts"><button class="btn ghost" data-act="close">닫기</button></div>`);
+  const box=$('#modal .lbwrap');
+  if(!window.LB||!LB.ready){ box.innerHTML='<div class="lbmsg">리더보드에 연결할 수 없어요.<br>인터넷 연결을 확인해 주세요.</div>'; return; }
+  try{
+    const t=await LB.top(20);
+    if(!t.length){ box.innerHTML='<div class="lbmsg">아직 기록이 없어요.<br>첫 번째 모험가가 되어 보세요!</div>'; return; }
+    const medal=['🥇','🥈','🥉'];
+    box.innerHTML=`<ol class="lb">${t.map((x,i)=>`<li class="${x.name===META.name?'me':''}"><span class="rk">${medal[i]||(i+1)}</span><span class="nm">${esc(x.name)}</span><span class="sub">Lv.${x.lvl} · ${x.kills}킬</span><span class="fl">${x.floor}층</span></li>`).join('')}</ol>`;
+  }catch(e){ console.warn(e); box.innerHTML='<div class="lbmsg">불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>'; }
 }
 
 /* ---------- chest ---------- */
@@ -732,6 +811,8 @@ document.addEventListener('click',e=>{
     case 'sellItem': sellItem(); break;
     case 'showEq': showEq(b.dataset.slot); break;
     case 'close': closeModal(); break;
+    case 'leaderboard': leaderboard(); break;
+    case 'submitScore': submitScore(); break;
     case 'buy': buy(b.dataset.id); break;
     case 'leave': closeModal(); nextFloor(); break;
     case 'camp': camp(b.dataset.c); break;
